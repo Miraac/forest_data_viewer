@@ -1,25 +1,49 @@
 print('Program analizuje i prezentuje podstawowe informacje zawarte w arkuszu pozyskanym ze strony BDL.\nDo uruchomienia niezbędne są zainstalowane biblioteki: Pandas, Geopandas, Numpy, Sklearn.')
 input('Jesli biblioteki nie są zainstalowane nastąpi automatyczne zamknięcie programu.\nKliknij enter aby kontynuować.')
 import pandas as pd
-print('jest pd')
+# print('jest pd')
 import geopandas as gpd
-print('gpd jest')
+# print('gpd jest')
 from sklearn.linear_model import LinearRegression
-print('sklearn jest')
+# print('sklearn jest')
 import sys
-print('sys jest')
+# print('sys jest')
 import numpy as np
-print('numpy jest')
-from shapely.geometry import Polygon, LineString, Point
-print('shapely jest')
+# print('numpy jest')
+# from shapely.geometry import Polygon, LineString, Point
+# print('shapely jest')
 import os
-print('os jest')
-#pozyskiwanie pliku
+# print('os jest')
+# pozyskiwanie pliku
 print('python ver p: 3.9.13 -> o: ',sys.version,' ')
-#dane = pd.read_csv('f_area_type_dic.txt', delimiter=' ')
-dan = gpd.read_file('G_SUBAREA.shp')
-geometry =dan['geometry']
-dan.drop(columns='geometry',inplace=True)
+# dane = pd.read_csv('f_area_type_dic.txt', delimiter=' ')
+decyzja = '0'
+
+
+#ZAPYTANIE O RODZAJ PLIKU#
+decyzja=input('Wczytując .csv wybierz 1\nWczytując shapefile wybierz 2: ')
+if decyzja=='1':
+    plik=input('podaj nazwę pliku lub pomiń by wczytać G_SUBAREA.csv: ')
+    try:
+        dan=pd.read_csv(plik)
+    except FileNotFoundError:
+        dan=pd.read_csv('G_SUBAREA.csv')
+    except:
+        input('brak pliku')
+        exit()
+#nie działa błąd driver error
+elif decyzja=='2':
+    plik=input('podaj nazwę pliku lub pomiń by wczytać G_SUBAREA.shp: ')
+    try:
+        dan = gpd.read_file(plik)
+    except:
+        try:
+            dan = gpd.read_file('G_SUBAREA.shp')
+        except:
+            input('brak pliku')
+            exit()
+        
+#PRZEMIANOWANIE KOLUMN#
 kolumny=dan.columns
 nkol = {'a_i_num':'ID','adr_for':'Adres Leśny','site_type':'Siedlisko','stand_stru':'Budowa','rotat_age':'Wiek Rębności',
         'sub_area':'Powierzchnia','prot_categ':'Kat. Ochronna','species_cd':'Gatunek','spec_age':'Wiek','a_year':'Rok',
@@ -35,12 +59,12 @@ dane=dan.dropna(subset='Funkcja drzewostanu')
 #dane2 - usuniete
 
 #dane.info()
-decyzja = '0'
+
 sum=len(dane)
 clear = lambda: os.system('cls')
 powierzchnia=round(dane['Powierzchnia'].sum(),2)
-pow_calk=round(dan['Powierzchnia'].sum(),2)
-spow=round(dane['Powierzchnia'].sum(),2)
+#pow_calk=round(dan['Powierzchnia'].sum(),2)
+#spow=round(dane['Powierzchnia'].sum(),2)
 
 while decyzja != '9':
     print('------------------------------\n1- dane dot. całego nadlenictwa\n2- dane dot. wybranych wydzieleń\n3- edycja danych\n9- wyjscie')
@@ -51,15 +75,16 @@ while decyzja != '9':
         decyzja = input('Wybierz numer i nacisnij enter: ')
         if decyzja == '1':
             #siedlisko
-            scou= dane['Siedlisko'].value_counts()
+            scou= dane['Siedlisko'].value_counts().to_frame()
+            typys = dane['Siedlisko'].unique()
             dane.set_index('Siedlisko',inplace=True)
-            typys = dane.index.unique()
-            print('----------------------------------------\n',sum,'wydzieleń z okreslonym typem siedliska')
-            print('ilosc wydzieleń dla każdego typu:\n',scou)
-            print('obszar lasów z okreslonym typem:')
+            scou.columns={'Ilość':'Siedlisko'}
             for x in typys:
-                print(x,round(dane.loc[x,'Powierzchnia'].sum(),2),'     ',round(dane.loc[x,'Powierzchnia'].sum()/spow*100,2),'%')
+                scou.loc[x,'pow [a]']=round(dane.loc[x,'Powierzchnia'].sum(),2)
+                scou.loc[x,'pow [%]']=round(dane.loc[x,'Powierzchnia'].sum()/powierzchnia*100,2)
             dane.reset_index(inplace=True)
+            print('ilość wydzieleń:',sum,'całkowita powierzchnia:',powierzchnia,'\n',
+                  scou)           
         elif decyzja == '2':
             #wiek
             print('----------------------------------------\nsredni wiek:',round(dane['Wiek'].mean(),2),'lat.')
@@ -67,13 +92,13 @@ while decyzja != '9':
             gos = dane['Funkcja drzewostanu'] == 'GOSP'
             goss= dane.where(gos).dropna(subset='Adres Leśny')
             print('Maksymalny wiek (lasy gosp):',round(goss['Wiek'].max(),2),'lat')
-            print('5 wydzieleń z najstarszymi drzewami:\n',goss.nlargest(n=5,columns='Wiek').loc[:,['ID','Wiek']])
+            print('5 wydzieleń z najstarszymi drzewami:\n',goss.nlargest(n=5,columns='Wiek').loc[:,['Adres Leśny','Wiek']])
             kw = np.arange(0,100,20)
             for x in kw :
                 a=dane['Wiek'].between(x,x+20)
-                print(int((x+20)/20),' klasa wieku',dane['Powierzchnia'].where(a).count(), 'wydzieleń     ',round(dane['Powierzchnia'].where(a).sum(),2),'a  ', round(dane['Powierzchnia'].where(a).dropna().sum()/powierzchnia*100,2),'% obszaru lasów')
+                print(int((x+20)/20),' klasa wieku',dane['Powierzchnia'].where(a).count(), 'wydzieleń\t',round(dane['Powierzchnia'].where(a).sum(),2),'a\t', round(dane['Powierzchnia'].where(a).dropna().sum()/powierzchnia*100,2),'% obszaru lasów')
             a=dane['Wiek'].between(100,120)
-            print('6+ klasa wieku',dane['Powierzchnia'].where(a).count(), 'wydzieleń     ',round(dane['Powierzchnia'].where(a).sum()), 'a  ',round(dane['Powierzchnia'].where(a).sum()/powierzchnia*100),'% obszaru lasów')
+            print('6+ klasa wieku',dane['Powierzchnia'].where(a).count(), 'wydzieleń\t',round(dane['Powierzchnia'].where(a).sum()), 'a\t',round(dane['Powierzchnia'].where(a).sum()/powierzchnia*100),'% obszaru lasów')
         elif decyzja =='3':
             #udzial poszczegolnych gatunkow 
             print('----------------------------------------')
@@ -82,8 +107,8 @@ while decyzja != '9':
             typys = dane.index.unique().dropna()
             print('powierzchnia oraz % udzial wydzielen wg dominującego gatunku (wyłącznie pow. 0,5%')            
             for x in typys:
-                if round(dane.loc[x,'Powierzchnia'].sum()/spow*100,2) > 0.5:
-                    print(x,round(dane.loc[x,'Powierzchnia'].sum(),2),'a     ',round(dane.loc[x,'Powierzchnia'].sum()/spow*100,2),'%')
+                if round(dane.loc[x,'Powierzchnia'].sum()/powierzchnia*100,2) > 0.5:
+                    print(x,round(dane.loc[x,'Powierzchnia'].sum(),2),'a\t',round(dane.loc[x,'Powierzchnia'].sum()/powierzchnia*100,2),'%')
             dane.reset_index(inplace=True)
         elif decyzja =='8':
             continue
@@ -92,8 +117,6 @@ while decyzja != '9':
             print('\nNiewlasciwa wartosc')
 
  
-
-dane['Gatunek'].count()
 # =============================================================================
 # 
 # 
@@ -126,3 +149,20 @@ dane['Gatunek'].count()
 # s = gpd.GeoSeries(test['geometry'])
 # s.area
 # =============================================================================
+
+# dane.reset_index(inplace=True)
+
+# scou= pd.DataFrame(dane['Siedlisko'].value_counts())
+# scou.columns={'Liczba wydzielen':'Siedlisko'}
+# dane.set_index('Siedlisko',inplace=True)
+# typys = dane.index.unique()
+# print('----------------------------------------\n',sum,'wydzieleń z okreslonym typem siedliska')#print('ilosc wydzieleń dla każdego typu:\n',scou)
+# print('obszar lasów z okreslonym typem:')
+#  for x in typys:
+#      print(x,round(dane.loc[x,'Powierzchnia'].sum(),2),'     ',round(dane.loc[x,'Powierzchnia'].sum()/powierzchnia*100,2),'%')
+#  dane.reset_index(inplace=True)
+# for x in typys:
+#     scou.loc[x,'pow [a]']=round(dane.loc[x,'Powierzchnia'].sum(),2)
+#     scou.loc[x,'pow [%]']=round(dane.loc[x,'Powierzchnia'].sum()/powierzchnia*100,2)
+# scou['pow']=0
+# scou.loc[x,'pow']=round(dane.loc[x,'Powierzchnia'].sum(),2)
