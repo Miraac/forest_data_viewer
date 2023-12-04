@@ -10,9 +10,5 @@ print('python ver p: 3.9.13 -> o: ',sys.version,' ')
 
 
 data, language = ui.importFileInterface()
-data, k_kol = ui.choose_column_names_ui(data, language)
-ui.main_interface(data,k_kol)
-
-
-print('success')
-print(data.head())
+data, k_col = ui.choose_column_names_ui(data, language)
+ui.main_interface(data, k_col)
